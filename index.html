@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Načítám recenze…</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0a0a0a;
+      --surface: #141414;
+      --border:  #242424;
+      --text:    #f0f0f0;
+      --muted:   #777;
+      --g-blue:  #4285f4;
+      --g-red:   #ea4335;
+      --g-yel:   #fbbc04;
+      --g-grn:   #34a853;
+      --radius:  18px;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    #app { width: 100%; max-width: 380px; text-align: center; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    .spinner-wrap { padding: 40px 0; }
+    .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--g-blue); border-radius: 50%; animation: spin .75s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { color: var(--muted); font-size: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px 22px; }
+    .g-word { display: inline-flex; align-items: center; gap: 1px; font-size: 13px; font-weight: 700; letter-spacing: .3px; margin-bottom: 20px; opacity: .85; }
+    .g-word .g  { color: var(--g-blue); } .g-word .o1 { color: var(--g-red); } .g-word .o2 { color: var(--g-yel); } .g-word .gl { color: var(--g-blue); } .g-word .e  { color: var(--g-grn); } .g-word .r  { color: var(--g-red); }
+    .icon { font-size: 40px; margin-bottom: 14px; line-height: 1; }
+    h1 { font-size: 19px; font-weight: 600; line-height: 1.3; letter-spacing: -.2px; margin-bottom: 8px; }
+    .business { color: var(--g-blue); }
+    .sub { color: var(--muted); font-size: 13.5px; line-height: 1.55; margin-bottom: 22px; }
+    .steps { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 18px; text-align: left; }
+    .step { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+    .step + .step { margin-top: 11px; }
+    .step-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--g-blue); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .step em { color: var(--text); font-style: normal; font-weight: 500; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; padding: 13px 18px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .1s; -webkit-tap-highlight-color: transparent; line-height: 1; }
+    .btn:active { opacity: .82; transform: scale(.97); }
+    .btn-primary { background: var(--g-blue); color: #fff; margin-bottom: 10px; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .url-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; margin-top: 12px; }
+    .url-text { flex: 1; font-size: 11px; color: var(--muted); word-break: break-all; text-align: left; line-height: 1.35; }
+    .copy-btn { flex-shrink: 0; background: var(--border); border: none; color: var(--text); font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 7px; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+    .copy-btn.copied { background: var(--g-grn); color: #fff; }
+    .hint { color: var(--muted); font-size: 12.5px; margin-top: 14px; line-height: 1.5; }
+    .hint code { font-family: monospace; background: var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <p class="spinner-label">Přesměrovávám…</p>
+  </div>
+</div>
+<script>
+
+// ════════════════════════════════════════════════════════════════
+//  JAK PŘIDAT PODNIK:
+//  1. Najdi volný slot (např. f2, s1 atd.)
+//  2. Přepiš název: name: 'Název podniku'
+//  3. Vlož Google URL mezi uvozovky: url: 'VLOŽ SEM ODKAZ'
+//  4. Ulož soubor a nahraj na Netlify
+// ════════════════════════════════════════════════════════════════
+
+const REDIRECTS = {
+
+  // ── STARÉ STOJÁNKY (AliExpress) f1–f23 ──────────────────────
+
+  'f1':  { name: 'Mr.Dao',    url: 'https://www.google.com/search?q=mr.dao+recenze&ludocid=1390430285421160485&ibp=gwp;0,7#lkt=LocalPoiReviews&lpg=cid:CgIgAQ%3D%3D' },
+  'f2':  { name: '',          url: '' },
+  'f3':  { name: '',          url: '' },
+  'f4':  { name: '',          url: '' },
+  'f5':  { name: '',          url: '' },
+  'f6':  { name: '',          url: '' },
+  'f7':  { name: '',          url: '' },
+  'f8':  { name: '',          url: '' },
+  'f9':  { name: '',          url: '' },
+  'f10': { name: '',          url: '' },
+  'f11': { name: '',          url: '' },
+  'f12': { name: '',          url: '' },
+  'f13': { name: '',          url: '' },
+  'f14': { name: '',          url: '' },
+  'f15': { name: '',          url: '' },
+  'f16': { name: '',          url: '' },
+  'f17': { name: '',          url: '' },
+  'f18': { name: '',          url: '' },
+  'f19': { name: '',          url: '' },
+  'f20': { name: '',          url: '' },
+  'f21': { name: '',          url: '' },
+  'f22': { name: '',          url: '' },
+  'f23': { name: '',          url: '' },
+
+  // ── NOVÉ STOJÁNKY (Alibaba) s1–s200 ─────────────────────────
+
+  's1':  { name: '',          url: '' },
+  's2':  { name: '',          url: '' },
+  's3':  { name: '',          url: '' },
+  's4':  { name: '',          url: '' },
+  's5':  { name: '',          url: '' },
+  's6':  { name: '',          url: '' },
+  's7':  { name: '',          url: '' },
+  's8':  { name: '',          url: '' },
+  's9':  { name: '',          url: '' },
+  's10': { name: '',          url: '' },
+  's11': { name: '',          url: '' },
+  's12': { name: '',          url: '' },
+  's13': { name: '',          url: '' },
+  's14': { name: '',          url: '' },
+  's15': { name: '',          url: '' },
+  's16': { name: '',          url: '' },
+  's17': { name: '',          url: '' },
+  's18': { name: '',          url: '' },
+  's19': { name: '',          url: '' },
+  's20': { name: '',          url: '' },
+  's21': { name: '',          url: '' },
+  's22': { name: '',          url: '' },
+  's23': { name: '',          url: '' },
+  's24': { name: '',          url: '' },
+  's25': { name: '',          url: '' },
+  's26': { name: '',          url: '' },
+  's27': { name: '',          url: '' },
+  's28': { name: '',          url: '' },
+  's29': { name: '',          url: '' },
+  's30': { name: '',          url: '' },
+  's31': { name: '',          url: '' },
+  's32': { name: '',          url: '' },
+  's33': { name: '',          url: '' },
+  's34': { name: '',          url: '' },
+  's35': { name: '',          url: '' },
+  's36': { name: '',          url: '' },
+  's37': { name: '',          url: '' },
+  's38': { name: '',          url: '' },
+  's39': { name: '',          url: '' },
+  's40': { name: '',          url: '' },
+  's41': { name: '',          url: '' },
+  's42': { name: '',          url: '' },
+  's43': { name: '',          url: '' },
+  's44': { name: '',          url: '' },
+  's45': { name: '',          url: '' },
+  's46': { name: '',          url: '' },
+  's47': { name: '',          url: '' },
+  's48': { name: '',          url: '' },
+  's49': { name: '',          url: '' },
+  's50': { name: '',          url: '' },
+  's51': { name: '',          url: '' },
+  's52': { name: '',          url: '' },
+  's53': { name: '',          url: '' },
+  's54': { name: '',          url: '' },
+  's55': { name: '',          url: '' },
+  's56': { name: '',          url: '' },
+  's57': { name: '',          url: '' },
+  's58': { name: '',          url: '' },
+  's59': { name: '',          url: '' },
+  's60': { name: '',          url: '' },
+  's61': { name: '',          url: '' },
+  's62': { name: '',          url: '' },
+  's63': { name: '',          url: '' },
+  's64': { name: '',          url: '' },
+  's65': { name: '',          url: '' },
+  's66': { name: '',          url: '' },
+  's67': { name: '',          url: '' },
+  's68': { name: '',          url: '' },
+  's69': { name: '',          url: '' },
+  's70': { name: '',          url: '' },
+  's71': { name: '',          url: '' },
+  's72': { name: '',          url: '' },
+  's73': { name: '',          url: '' },
+  's74': { name: '',          url: '' },
+  's75': { name: '',          url: '' },
+  's76': { name: '',          url: '' },
+  's77': { name: '',          url: '' },
+  's78': { name: '',          url: '' },
+  's79': { name: '',          url: '' },
+  's80': { name: '',          url: '' },
+  's81': { name: '',          url: '' },
+  's82': { name: '',          url: '' },
+  's83': { name: '',          url: '' },
+  's84': { name: '',          url: '' },
+  's85': { name: '',          url: '' },
+  's86': { name: '',          url: '' },
+  's87': { name: '',          url: '' },
+  's88': { name: '',          url: '' },
+  's89': { name: '',          url: '' },
+  's90': { name: '',          url: '' },
+  's91': { name: '',          url: '' },
+  's92': { name: '',          url: '' },
+  's93': { name: '',          url: '' },
+  's94': { name: '',          url: '' },
+  's95': { name: '',          url: '' },
+  's96': { name: '',          url: '' },
+  's97': { name: '',          url: '' },
+  's98': { name: '',          url: '' },
+  's99': { name: '',          url: '' },
+  's100': { name: '',         url: '' },
+  's101': { name: '',         url: '' },
+  's102': { name: '',         url: '' },
+  's103': { name: '',         url: '' },
+  's104': { name: '',         url: '' },
+  's105': { name: '',         url: '' },
+  's106': { name: '',         url: '' },
+  's107': { name: '',         url: '' },
+  's108': { name: '',         url: '' },
+  's109': { name: '',         url: '' },
+  's110': { name: '',         url: '' },
+  's111': { name: '',         url: '' },
+  's112': { name: '',         url: '' },
+  's113': { name: '',         url: '' },
+  's114': { name: '',         url: '' },
+  's115': { name: '',         url: '' },
+  's116': { name: '',         url: '' },
+  's117': { name: '',         url: '' },
+  's118': { name: '',         url: '' },
+  's119': { name: '',         url: '' },
+  's120': { name: '',         url: '' },
+  's121': { name: '',         url: '' },
+  's122': { name: '',         url: '' },
+  's123': { name: '',         url: '' },
+  's124': { name: '',         url: '' },
+  's125': { name: '',         url: '' },
+  's126': { name: '',         url: '' },
+  's127': { name: '',         url: '' },
+  's128': { name: '',         url: '' },
+  's129': { name: '',         url: '' },
+  's130': { name: '',         url: '' },
+  's131': { name: '',         url: '' },
+  's132': { name: '',         url: '' },
+  's133': { name: '',         url: '' },
+  's134': { name: '',         url: '' },
+  's135': { name: '',         url: '' },
+  's136': { name: '',         url: '' },
+  's137': { name: '',         url: '' },
+  's138': { name: '',         url: '' },
+  's139': { name: '',         url: '' },
+  's140': { name: '',         url: '' },
+  's141': { name: '',         url: '' },
+  's142': { name: '',         url: '' },
+  's143': { name: '',         url: '' },
+  's144': { name: '',         url: '' },
+  's145': { name: '',         url: '' },
+  's146': { name: '',         url: '' },
+  's147': { name: '',         url: '' },
+  's148': { name: '',         url: '' },
+  's149': { name: '',         url: '' },
+  's150': { name: '',         url: '' },
+  's151': { name: '',         url: '' },
+  's152': { name: '',         url: '' },
+  's153': { name: '',         url: '' },
+  's154': { name: '',         url: '' },
+  's155': { name: '',         url: '' },
+  's156': { name: '',         url: '' },
+  's157': { name: '',         url: '' },
+  's158': { name: '',         url: '' },
+  's159': { name: '',         url: '' },
+  's160': { name: '',         url: '' },
+  's161': { name: '',         url: '' },
+  's162': { name: '',         url: '' },
+  's163': { name: '',         url: '' },
+  's164': { name: '',         url: '' },
+  's165': { name: '',         url: '' },
+  's166': { name: '',         url: '' },
+  's167': { name: '',         url: '' },
+  's168': { name: '',         url: '' },
+  's169': { name: '',         url: '' },
+  's170': { name: '',         url: '' },
+  's171': { name: '',         url: '' },
+  's172': { name: '',         url: '' },
+  's173': { name: '',         url: '' },
+  's174': { name: '',         url: '' },
+  's175': { name: '',         url: '' },
+  's176': { name: '',         url: '' },
+  's177': { name: '',         url: '' },
+  's178': { name: '',         url: '' },
+  's179': { name: '',         url: '' },
+  's180': { name: '',         url: '' },
+  's181': { name: '',         url: '' },
+  's182': { name: '',         url: '' },
+  's183': { name: '',         url: '' },
+  's184': { name: '',         url: '' },
+  's185': { name: '',         url: '' },
+  's186': { name: '',         url: '' },
+  's187': { name: '',         url: '' },
+  's188': { name: '',         url: '' },
+  's189': { name: '',         url: '' },
+  's190': { name: '',         url: '' },
+  's191': { name: '',         url: '' },
+  's192': { name: '',         url: '' },
+  's193': { name: '',         url: '' },
+  's194': { name: '',         url: '' },
+  's195': { name: '',         url: '' },
+  's196': { name: '',         url: '' },
+  's197': { name: '',         url: '' },
+  's198': { name: '',         url: '' },
+  's199': { name: '',         url: '' },
+  's200': { name: '',         url: '' },
+
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ENGINE — tohle neměň
+// ════════════════════════════════════════════════════════════════
+
+function getSlug() { return window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase() || null; }
+function detectOS() { const u = navigator.userAgent; if (/iPad|iPhone|iPod/.test(u) && !window.MSStream) return 'ios'; if (/android/i.test(u)) return 'android'; return 'other'; }
+function detectInApp() { const u = navigator.userAgent; return /FBAN|FBAV|FBIOS|FB_IAB|FBBV|Instagram|MicroMessenger|BytedanceWebview|musical_ly|Snapchat|LinkedInApp|Twitter/.test(u); }
+function bustCache(url) { const b = `_t=${Date.now()}`; const h = url.indexOf('#'); if (h === -1) return `${url}${url.includes('?') ? '&' : '?'}${b}`; return `${url.slice(0,h)}${url.slice(0,h).includes('?') ? '&' : '?'}${b}${url.slice(h)}`; }
+function buildIntent(url) { const s = url.replace(/^https?:\/\//, ''); return `intent://${s}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url)};end`; }
+function buildChrome(url) { return url.replace(/^https:\/\//, 'googlechromes://').replace(/^http:\/\//, 'googlechrome://'); }
+async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { const t = Object.assign(document.createElement('textarea'), { value: text, style: 'position:fixed;opacity:0' }); document.body.appendChild(t); t.focus(); t.select(); const ok = document.execCommand('copy'); document.body.removeChild(t); return ok; } }
+function gWord() { return `<div class="g-word"><span class="g">G</span><span class="o1">o</span><span class="o2">o</span><span class="gl">g</span><span class="e">l</span><span class="r">e</span>&nbsp;Recenze</div>`; }
+function urlRow(url) { return `<div class="url-row"><span class="url-text">${url}</span><button class="copy-btn" id="copyBtn">Kopírovat</button></div>`; }
+function attachCopy(url) { const b = document.getElementById('copyBtn'); if (!b) return; b.addEventListener('click', async () => { const ok = await copy(url); b.textContent = ok ? '✓ OK' : 'Chyba'; b.classList.toggle('copied', ok); setTimeout(() => { b.textContent = 'Kopírovat'; b.classList.remove('copied'); }, 2500); }); }
+
+function renderNotFound(slug) {
+  document.title = '404 – Recenzemat'; 
+  document.getElementById('app').innerHTML = `<div class="card"><div class="icon">🔍</div><h1>Odkaz neexistuje</h1><p class="sub">Slot <strong>/${slug || ''}</strong> nemá vyplněnou URL.</p><p class="hint">Otevři <code>index.html</code> a doplň <code>url:</code> pro tento stojánek.</p></div>`;
+}
+
+function renderIOS(name, url) {
+  document.getElementById('app').innerHTML = `<div class="card">${gWord()}<div class="icon">⭐</div><h1>Ohodnoť <span class="business">${name}</span></h1><p class="sub">Jsi v in-app prohlížeči. Otevři odkaz v Safari nebo Chrome, kde jsi přihlášen/á ke Google.</p><div class="steps"><div class="step"><div class="step-dot">1</div><div>Zkus tlačítko níže — otevře <em>Chrome</em></div></div><div class="step"><div class="step-dot">2</div><div>Pokud se nic nestane, klikni na <em>⋯</em> v rohu a vyber <em>Otevřít v prohlížeči</em></div></div><div class="step"><div class="step-dot">3</div><div>Nebo zkopíruj odkaz a vlož do Safari / Chrome</div></div></div><button class="btn btn-primary" id="chromeBtn">🌐 Otevřít v Chrome</button>${urlRow(url)}</div>`;
+  document.getElementById('chromeBtn').addEventListener('click', () => { window.location.href = buildChrome(url); setTimeout(() => { window.location.href = url; }, 900); });
+  attachCopy(url);
+}
+
+function renderAndroid(name, url) {
+  const intent = buildIntent(url);
+  document.getElementById('app').innerHTML = `<div class="card">${gWord()}<div class="icon">⭐</div><h1>Ohodnoť <span class="business">${name}</span></h1><p class="sub">Otevíráme Chrome, kde jsi přihlášen/á ke Google účtu…</p><button class="btn btn-primary" id="chromeBtn">🌐 Otevřít v Chrome</button><button class="btn btn-secondary" id="directBtn">Otevřít tady</button>${urlRow(url)}</div>`;
+  setTimeout(() => { window.location.href = intent; }, 400);
+  document.getElementById('chromeBtn').addEventListener('click', () => { window.location.href = intent; setTimeout(() => { window.location.href = url; }, 900); });
+  document.getElementById('directBtn').addEventListener('click', () => { window.location.href = url; });
+  attachCopy(url);
+}
+
+(function main() {
+  const slug  = getSlug();
+  const entry = slug ? REDIRECTS[slug] : null;
+  if (!entry || !entry.url) { renderNotFound(slug); return; }
+  const { name, url } = entry;
+  const final = bustCache(url);
+  document.title = `Recenze – ${name}`;
+  if (!detectInApp()) { window.location.href = final; return; }
+  detectOS() === 'android' ? renderAndroid(name, final) : renderIOS(name, final);
+})();
+</script>
+</body>
+</html>
