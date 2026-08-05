@@ -348,6 +348,59 @@
     .copy-btn.copied { background: var(--g-grn); color: #fff; }
     .hint { color: var(--muted); font-size: 12.5px; margin-top: 14px; line-height: 1.5; }
     .hint code { font-family: monospace; background: var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  /* ══════════════ INTRO ANIMACE PŘED PŘESMĚROVÁNÍM (1,5 s) ══════════════ */
+  #rm-intro{
+    position:fixed;inset:0;z-index:99999;
+    background:radial-gradient(120% 90% at 50% 35%, #1A4FA0 0%, #0B2A5B 55%, #06183A 100%);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    animation:rm-odchod .22s ease-in forwards;animation-delay:1.28s;
+  }
+  #rm-intro .rm-vlna{
+    position:absolute;top:38%;left:50%;width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.55);transform:translate(-50%,-50%) scale(0);
+    animation:rm-vlnaAnim .85s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  #rm-intro .rm-vlna:nth-of-type(2){animation-delay:.12s;}
+  #rm-intro .rm-vlna:nth-of-type(3){animation-delay:.24s;}
+  #rm-intro .rm-obsah{position:relative;z-index:2;text-align:center;padding:0 28px;width:100%;}
+  #rm-intro .rm-nazev{
+    color:#fff;font-size:22px;font-weight:650;letter-spacing:-.02em;line-height:1.25;
+    opacity:0;animation:rm-nastup .34s ease-out forwards;animation-delay:.14s;
+  }
+  #rm-intro .rm-hvezdy{display:flex;justify-content:center;gap:7px;margin-top:22px;}
+  #rm-intro .rm-hvezdy svg{
+    width:34px;height:34px;opacity:0;transform:scale(.4) translateY(6px);
+    animation:rm-hvezda .38s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  #rm-intro .rm-hvezdy svg:nth-of-type(1){animation-delay:.40s;}
+  #rm-intro .rm-hvezdy svg:nth-of-type(2){animation-delay:.51s;}
+  #rm-intro .rm-hvezdy svg:nth-of-type(3){animation-delay:.62s;}
+  #rm-intro .rm-hvezdy svg:nth-of-type(4){animation-delay:.73s;}
+  #rm-intro .rm-hvezdy svg:nth-of-type(5){animation-delay:.84s;}
+  #rm-intro .rm-popisek{
+    color:#9DB2D4;font-size:13.5px;font-weight:500;margin-top:26px;opacity:0;
+    animation:rm-nastup .3s ease-out forwards;animation-delay:1.02s;
+  }
+  #rm-intro .rm-znacka{
+    position:absolute;bottom:26px;left:0;right:0;text-align:center;
+    color:rgba(157,178,212,.55);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+    opacity:0;animation:rm-nastup .4s ease-out forwards;animation-delay:.6s;
+  }
+  #rm-intro .rm-linka{
+    position:absolute;bottom:0;left:0;height:2px;width:100%;background:#FBBC04;
+    transform-origin:left;transform:scaleX(0);
+    animation:rm-linkaAnim 1.5s linear forwards;
+  }
+  @keyframes rm-vlnaAnim{
+    0%{transform:translate(-50%,-50%) scale(0);opacity:.85;}
+    100%{transform:translate(-50%,-50%) scale(26);opacity:0;}
+  }
+  @keyframes rm-nastup{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes rm-hvezda{0%{opacity:0;transform:scale(.4) translateY(6px);}100%{opacity:1;transform:scale(1) translateY(0);}}
+  @keyframes rm-linkaAnim{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+  @keyframes rm-odchod{to{opacity:0;transform:scale(1.06);}}
   </style>
 </head>
 <body>
@@ -878,6 +931,65 @@ function initTapDemo() {
   });
 }
 
+// ════════════════════════════════════════════════════════════════
+//  LOGOVÁNÍ TAPŮ DO SUPABASE
+//  Vyplň obě konstanty. Dokud jsou prázdné, logování se přeskočí
+//  a nic se nerozbije.
+// ════════════════════════════════════════════════════════════════
+const SUPABASE_URL = '';      // např. 'https://xwnkaqdmlbdielpsnnja.supabase.co'
+const SUPABASE_ANON = '';     // anon public key z Supabase → Settings → API
+
+function logTap(slug) {
+  if (!SUPABASE_URL || !SUPABASE_ANON) return;
+  try {
+    // keepalive → požadavek doběhne, i když prohlížeč hned odchází pryč
+    fetch(`${SUPABASE_URL}/rest/v1/taps`, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ slug: slug, user_agent: navigator.userAgent.slice(0, 300) })
+    }).catch(() => {});
+  } catch (e) { /* logování nikdy nesmí zdržet přesměrování */ }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INTRO ANIMACE (1,5 s) → pak zavolá hotovo()
+//  Tvrdý časovač běží nezávisle na animaci: i kdyby se CSS
+//  nevykreslilo, přesměrování proběhne. Nikdy nesmí nastat stav,
+//  kdy zákazník kouká na zaseknutou obrazovku.
+// ════════════════════════════════════════════════════════════════
+const INTRO_MS = 1500;
+
+function playIntro(name, hotovo) {
+  const bezPohybu = window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (bezPohybu) { hotovo(); return; }
+
+  const hvezda = '<svg viewBox="0 0 24 24" fill="#FBBC04" aria-hidden="true"><path d="M12 2.4l2.9 6.05 6.6.9-4.8 4.6 1.2 6.55L12 17.4l-5.9 3.1 1.2-6.55-4.8-4.6 6.6-.9z"/></svg>';
+  const el = document.createElement('div');
+  el.id = 'rm-intro';
+  el.innerHTML =
+    '<span class="rm-vlna"></span><span class="rm-vlna"></span><span class="rm-vlna"></span>' +
+    '<div class="rm-obsah">' +
+      '<div class="rm-nazev"></div>' +
+      '<div class="rm-hvezdy">' + hvezda.repeat(5) + '</div>' +
+      '<div class="rm-popisek">Otevírám hodnocení na Googlu…</div>' +
+    '</div>' +
+    '<div class="rm-znacka">recenzemat.cz</div>' +
+    '<div class="rm-linka"></div>';
+  // textContent, ne innerHTML → název podniku se nikdy nevykreslí jako HTML
+  el.querySelector('.rm-nazev').textContent = name || '';
+  document.body.appendChild(el);
+
+  let hotovoSpusteno = false;
+  setTimeout(() => { if (!hotovoSpusteno) { hotovoSpusteno = true; hotovo(); } }, INTRO_MS);
+}
+
 function isStandSlug(slug) {
   // Platný slot stojánku vypadá jen jako f1–f23 nebo s1–s200 — cokoliv jiného
   // (kořen domény, překlep, robot, nebo "srcdoc" z náhledu v Claude.ai) je landing page.
@@ -902,8 +1014,17 @@ function isStandSlug(slug) {
   const { name, url } = entry;
   const final = bustCache(url);
   document.title = `Recenze – ${name}`;
-  if (!detectInApp()) { window.location.href = final; return; }
-  detectOS() === 'android' ? renderAndroid(name, final) : renderIOS(name, final);
+
+  logTap(slug);
+
+  // In-app browser (Instagram, FB…) → escape UI hned, tam se stejně kliká ručně.
+  if (detectInApp()) {
+    detectOS() === 'android' ? renderAndroid(name, final) : renderIOS(name, final);
+    return;
+  }
+
+  // Normální prohlížeč → 1,5 s animace, pak přesměrování.
+  playIntro(name, () => { window.location.href = final; });
 })();
 </script>
 </body>
